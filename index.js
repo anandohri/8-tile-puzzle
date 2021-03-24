@@ -2,137 +2,124 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 
-function Square(props){
-  return (
-    <button className="square" onClick={() => props.onClick()}>
+function Tiles(props){
+  return(
+    <button className = "square" value = {props.value} onClick = {() => props.onClick(props.value)} >
       {props.value}
     </button>
-  );
+  )
 }
 
-class Board extends React.Component {
+const win = [1,2,3,4,5,6,7,8,0]
 
-  renderSquare(i) {
-    return <Square value = {this.props.squares[i]} onClick={() => this.props.onClick(i)} />;
-  }
-
-  render() {
-    return (
-      <div>
-        <div className="board-row">
-          {this.renderSquare(0)}
-          {this.renderSquare(1)}
-          {this.renderSquare(2)}
-        </div>
-        <div className="board-row">
-          {this.renderSquare(3)}
-          {this.renderSquare(4)}
-          {this.renderSquare(5)}
-        </div>
-        <div className="board-row">
-          {this.renderSquare(6)}
-          {this.renderSquare(7)}
-          {this.renderSquare(8)}
-        </div>
-      </div>
-    );
-  }
-}
-
-function calculateWinner(square) {
-  const lines = [
-    [0,1,2],
-    [3,4,5],
-    [6,7,8],
-    [0,3,6],
-    [1,4,7],
-    [2,5,8],
-    [0,4,8],
-    [2,4,6]
-  ]
-
-  for (let i = 0; i < lines.length; i++){
-    const [a, b, c] = lines[i];
-    if(square[a] && square[a] === square[b] && square[a] === square[c]){
-      return square[a];
-    }
-  }
-  return null;
-}
-
-class Game extends React.Component {
+class Game extends React.Component{
   constructor(props){
     super(props);
-    this.state = {
-          history: [{
-            squares: Array(9).fill(null)
-          }],
-          stepNumber: 0,
-          xIsNext: true};
+    this.state = {seq: this.assignState()};
   }
 
-  handleChange(i){
-    const hist = this.state.history.slice(0,this.state.stepNumber + 1);
-    const curr = hist[this.state.stepNumber];
-    const sq = curr.squares.slice();
-    if(sq[i] || calculateWinner(sq)){
+  assignState = () => {
+    let arr = [0,1,2,3,4,5,6,7,8];
+    for(let i = 8; i > 0; --i){
+      const j = Math.floor(Math.random() * (i+1));
+      const temp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = temp;
+    }
+    return arr; 
+  }
+
+  renderNumber = (i) => {
+    return(
+      <Tiles value = {i} onClick = {this.handleClick} />
+    )
+  }
+
+  checkWin = () => {
+    if(this.state.seq === win){
+      return true;
+    }
+    return false;
+  }
+
+  handleClick = (i) => {
+    if(this.checkWin()){
       return;
     }
-    sq[i] = this.state.xIsNext ? 'X' : 'O';
-    this.setState({history: hist.concat([{squares: sq}]),
-                    stepNumber: hist.length,
-                    xIsNext: !this.state.xIsNext});
-  }
-
-  jumpTo(move){
-    this.setState({stepNumber: move,
-                    xIsNext: (move % 2 === 0)
-                  });
-  }
-
-  render() {
-    const hist = this.state.history;
-    const curr = hist[this.state.stepNumber];
-    const winner = calculateWinner(curr.squares);
-
-    const moves = hist.map((step,move) =>{
-      const desc = move ?
-        'Go to move #' + move :
-        'Go to Start';
-      return(
-        <li key = {move}>
-          <button onClick={() => this.jumpTo(move)}>{desc}</button>
-        </li>
-      );
-    });
-    let count = 0;
-    let status;
-    curr.squares.map(e => e === null ? count = count + 1 : '')
-    if (winner) {
-      status = 'Winner: ' + winner;
-    }
-    else if (count === 0){
-      status = 'It\' a draw!!';
+    const arr = this.state.seq.slice();
+    const adjacent = this.validMove(i);
+    if(adjacent === false){
+      return;
     }
     else{
-      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+      const temp = arr[adjacent[0]];
+      arr[adjacent[0]] = arr[adjacent[1]];
+      arr[adjacent[1]] = temp;
     }
-    return (
-      <div className="game">
-        <div className="game-board">
-          {status}
-          <Board squares = {curr.squares} onClick = {(i) => this.handleChange(i)} />
+    this.setState({seq: arr});
+  }
+
+  validMove = (i) => {
+    for(let j = 0; j < 9; ++j){
+      if(this.state.seq[j] === i){
+        if(j-1 >= 0 && this.state.seq[j-1] === 0){
+          const adjacent = [j-1, j];
+          return adjacent;
+        }
+        else if(j-3 >= 0 && this.state.seq[j-3] === 0){
+          const adjacent = [j-3, j];
+          return adjacent;
+        }
+        else if(j+1 <= 8 && this.state.seq[j+1] === 0){
+          const adjacent = [j+1, j];
+          return adjacent;
+        }
+        else if(j+3 <= 8 && this.state.seq[j+3] === 0){
+          const adjacent = [j+3, j];
+          return adjacent;
+        }
+      }
+    }
+    return false;
+  }
+
+  render(){
+    const rows = [];
+
+    for (let i=0; i<3; ++i) {
+      const rowItems = [];
+      for(let j =0; j<3; ++j){
+        const rowItem = (
+          this.renderNumber(this.state.seq[(i*3)+j])
+        );
+
+        rowItems.push(rowItem);
+      }
+      const row = (
+        <div className="board-row">
+          {rowItems}
         </div>
-        <div className="game-info">
-          <div></div>
-          <ol>{moves}</ol>
-        </div>
+      );
+
+      rows.push(row);
+    }
+
+    return(
+      <div>
+        <h1 className = 'header'>8-Tile Puzzle</h1>
+        <hr />
+        {rows}
+        <hr />
+        <br />
+        <p className = 'para'>
+        The <b>8-tile puzzle</b> is a sliding puzzle that is played on a 3-by-3 grid with 8 square tiles labeled 1 through 8, plus a blank square, in this case 0.
+        The goal is to rearrange the tiles so that they are in row-major order, using as few moves as possible.
+        You are permitted to slide tiles either horizontally or vertically into the blank square.
+        </p>
       </div>
-    );
+    )
   }
 }
-
-// ========================================
 
 ReactDOM.render(
   <Game />,
